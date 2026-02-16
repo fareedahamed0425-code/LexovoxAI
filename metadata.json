@@ -1,0 +1,7 @@
+{
+  "name": "Copy of SentinelAI - Deepfake & Scam Detector",
+  "description": "A high-performance cybersecurity platform for real-time detection of AI-generated scams and deepfake communications using linguistic and structural analysis.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
