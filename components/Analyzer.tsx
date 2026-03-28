@@ -127,34 +127,37 @@ const ControlActions = React.memo(({
   onPaste,
   onClear,
   onStartAnalysis
-}: any) => (
-  <div className="mt-6 flex justify-between items-center">
-    <div className="flex gap-2">
+}: any) => {
+  return (
+    <div className="mt-6 flex justify-between items-center">
+      <div className="flex gap-2">
+        <button
+          onClick={onPaste}
+          className="p-2 rounded-md glass-button text-slate-400"
+          title="Paste from clipboard"
+        >
+          <span className="material-symbols-outlined text-lg">content_paste</span>
+        </button>
+        <button
+          onClick={onClear}
+          className="p-2 rounded-md glass-button text-slate-400"
+          title="Clear Workspace"
+        >
+          <span className="material-symbols-outlined text-lg">delete</span>
+        </button>
+      </div>
+
       <button
-        onClick={onPaste}
-        className="p-2 rounded-md glass-button text-slate-400"
-        title="Paste from clipboard"
+        disabled={isAnalyzing || (!text.trim() && !audioBase64)}
+        onClick={onStartAnalysis}
+        className={`px-10 py-3 bg-gradient-to-r from-primary to-accent-purple text-white font-bold rounded-lg shadow-lg transition-all ${(isAnalyzing || (!text.trim() && !audioBase64)) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-primary/20'
+          }`}
       >
-        <span className="material-symbols-outlined text-lg">content_paste</span>
-      </button>
-      <button
-        onClick={onClear}
-        className="p-2 rounded-md glass-button text-slate-400"
-        title="Clear Workspace"
-      >
-        <span className="material-symbols-outlined text-lg">delete</span>
+        {isAnalyzing ? 'Processing Payload...' : 'Start Global Scan'}
       </button>
     </div>
-    <button
-      disabled={isAnalyzing || (!text.trim() && !audioBase64)}
-      onClick={onStartAnalysis}
-      className={`px-10 py-3 bg-gradient-to-r from-primary to-accent-purple text-white font-bold rounded-lg shadow-lg transition-all ${(isAnalyzing || (!text.trim() && !audioBase64)) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-primary/20'
-        }`}
-    >
-      {isAnalyzing ? 'Processing Payload...' : 'Start Global Scan'}
-    </button>
-  </div>
-));
+  );
+});
 
 const ResultsView = React.memo(Results);
 
@@ -165,7 +168,14 @@ const Analyzer: React.FC<AnalyzerProps> = ({ onStatsUpdate, onSaveHistory }) => 
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+
+  // Placeholder stats on mount
+  React.useEffect(() => {
+    onStatsUpdate({ latency: '0ms', load: 'Idle', integrity: 'LexovoxAI Ready' });
+  }, [onStatsUpdate]);
+
 
   const handleStartAnalysis = useCallback(async (forceType?: 'TEXT' | 'AUDIO') => {
     const activeType = forceType || (audioBase64 ? 'AUDIO' : 'TEXT');
@@ -182,16 +192,16 @@ const Analyzer: React.FC<AnalyzerProps> = ({ onStatsUpdate, onSaveHistory }) => 
     setIsAnalyzing(true);
     setError(null);
     setResult(null);
-    onStatsUpdate({ latency: 'Calculating...', load: 'High (88%)', integrity: 'Scanning...' });
+      onStatsUpdate({ latency: 'Engaging LexovoxAI...', load: 'Active (Local)', integrity: 'Scanning...' });
 
-    const startTime = performance.now();
+      const startTime = performance.now();
 
-    try {
-      const content = activeType === 'AUDIO'
-        ? `Forensic Analysis of audio sample: ${fileName}. Text transcript if available: ${text}`
-        : text;
+      try {
+        const content = activeType === 'AUDIO'
+          ? `Forensic Analysis of audio sample: ${fileName}.`
+          : text;
 
-      const analysisResult = await analyzeContent(content, activeType, audioBase64 || undefined);
+        const analysisResult = await analyzeContent(content, activeType, audioBase64 || undefined);
 
       const endTime = performance.now();
       const duration = (endTime - startTime).toFixed(0);
@@ -211,7 +221,7 @@ const Analyzer: React.FC<AnalyzerProps> = ({ onStatsUpdate, onSaveHistory }) => 
       onStatsUpdate({
         latency: `${duration}ms`,
         load: `${(Math.random() * 5 + 1).toFixed(1)}%`,
-        integrity: 'Verified'
+        integrity: 'LexovoxAI Verified'
       });
     } catch (err: any) {
       const errorMessage = err?.message || 'Unknown error occurred';
@@ -230,6 +240,7 @@ const Analyzer: React.FC<AnalyzerProps> = ({ onStatsUpdate, onSaveHistory }) => 
     }
     setError(null);
     setFileName(file.name);
+    setAudioFile(file); // Store the actual file object
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64 = (reader.result as string).split(',')[1];
@@ -275,9 +286,10 @@ const Analyzer: React.FC<AnalyzerProps> = ({ onStatsUpdate, onSaveHistory }) => 
   const handleClear = useCallback(() => {
     setText('');
     setAudioBase64(null);
+    setAudioFile(null);
     setFileName(null);
     setResult(null);
-    onStatsUpdate({ latency: '0ms', load: 'Idle', integrity: 'Standby' });
+    onStatsUpdate({ latency: '0ms', load: 'Idle', integrity: 'LexovoxAI Ready' });
   }, [onStatsUpdate]);
 
   const handleMainStartAnalysis = useCallback(() => {

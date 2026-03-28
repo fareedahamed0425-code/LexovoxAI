@@ -71,13 +71,13 @@ const App: React.FC = () => {
       <main className="flex-1 overflow-y-auto p-8 relative z-10">
         <header className="mb-12">
           <div className="inline-block px-3 py-1 rounded-full bg-accent-purple/10 border border-accent-purple/20 text-accent-purple text-xs font-bold tracking-widest uppercase mb-4">
-            Security Operations Center
+            LexovoxAI — Content Analysis Engine
           </div>
           <h1 className="text-4xl lg:text-6xl font-bold tracking-tight mb-4 text-white">
-            Sentinel<span className="text-primary tracking-tighter">AI</span> <span className="text-slate-500 font-light">/</span> <span className="text-primary/80 lowercase text-3xl font-mono">{activeView.replace('_', ' ')}</span>
+            Lexovox<span className="text-primary tracking-tighter">AI</span> <span className="text-slate-500 font-light">/</span> <span className="text-primary/80 lowercase text-3xl font-mono">{activeView.replace('_', ' ')}</span>
           </h1>
           <p className="text-slate-400 max-w-2xl text-lg leading-relaxed">
-            Enterprise-grade deep scanning and forensic analysis. Multi-vector threat intelligence active.
+            Advanced content analysis engine. Dual-module forensics: Audio Analysis (Module 1) + Text Threat Assessment (Module 2).
           </p>
         </header>
 
@@ -87,8 +87,8 @@ const App: React.FC = () => {
 
         <footer className="mt-12 flex justify-between items-center text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] border-t border-glass-border pt-6">
           <div className="flex items-center gap-3">
-            <span className={`flex h-2 w-2 rounded-full ${stats.integrity === 'Verified' ? 'bg-emerald-500' : 'bg-primary'} animate-pulse`}></span>
-            <span>System {stats.integrity === 'Verified' ? 'Optimal' : 'Ready'} • SOC v2.6.0</span>
+          <span className={`flex h-2 w-2 rounded-full ${stats.integrity.includes('Verified') || stats.integrity.includes('Ready') ? 'bg-emerald-500' : 'bg-primary'} animate-pulse`}></span>
+            <span>System {stats.integrity.includes('Verified') ? 'Optimal' : 'Ready'} • LexovoxAI Engine v2.0 (On-Device)</span>
           </div>
           <div className="flex gap-6">
             <a href="#" className="hover:text-primary transition-colors">Forensic API</a>
@@ -126,7 +126,7 @@ const StatsBar: React.FC<{ stats: AnalysisStats }> = React.memo(({ stats }) => (
       </div>
       <div>
         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Threat Intelligence</p>
-        <p className={`text-xl font-bold text-white ${stats.integrity === 'Verified' ? 'text-emerald-400' : ''}`}>
+        <p className={`text-xl font-bold text-white ${stats.integrity.includes('Verified') ? 'text-emerald-400' : ''}`}>
           {stats.integrity}
         </p>
       </div>
