@@ -1,11 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Analyzer from './components/Analyzer';
 import HistoryView from './components/HistoryView';
 import ThreatIntelView from './components/ThreatIntelView';
 import SettingsView from './components/SettingsView';
 import { AnalysisStats, AppView, HistoryEntry } from './types';
+import { checkVllmStatus, VllmStatus } from './services/aiService';
+
+const VLLM_POLL_MS = 30_000;
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<AppView>('DASHBOARD');
@@ -15,6 +18,19 @@ const App: React.FC = () => {
     load: 'Idle',
     integrity: 'Standby'
   });
+  const [vllmStatus, setVllmStatus] = useState<VllmStatus | null>(null);
+
+  // Poll vLLM server availability
+  const pollVllm = useCallback(async () => {
+    const s = await checkVllmStatus();
+    setVllmStatus(s);
+  }, []);
+
+  useEffect(() => {
+    pollVllm();
+    const id = setInterval(pollVllm, VLLM_POLL_MS);
+    return () => clearInterval(id);
+  }, [pollVllm]);
 
   // Load history from local storage on mount
   useEffect(() => {
@@ -70,8 +86,11 @@ const App: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto p-8 relative z-10">
         <header className="mb-12">
-          <div className="inline-block px-3 py-1 rounded-full bg-accent-purple/10 border border-accent-purple/20 text-accent-purple text-xs font-bold tracking-widest uppercase mb-4">
-            LexovoxAI — Content Analysis Engine
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <div className="inline-block px-3 py-1 rounded-full bg-accent-purple/10 border border-accent-purple/20 text-accent-purple text-xs font-bold tracking-widest uppercase">
+              LexovoxAI — Content Analysis Engine
+            </div>
+            <EngineStatusBadge status={vllmStatus} />
           </div>
           <h1 className="text-4xl lg:text-6xl font-bold tracking-tight mb-4 text-white">
             Lexovox<span className="text-primary tracking-tighter">AI</span> <span className="text-slate-500 font-light">/</span> <span className="text-primary/80 lowercase text-3xl font-mono">{activeView.replace('_', ' ')}</span>
@@ -87,8 +106,13 @@ const App: React.FC = () => {
 
         <footer className="mt-12 flex justify-between items-center text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] border-t border-glass-border pt-6">
           <div className="flex items-center gap-3">
-          <span className={`flex h-2 w-2 rounded-full ${stats.integrity.includes('Verified') || stats.integrity.includes('Ready') ? 'bg-emerald-500' : 'bg-primary'} animate-pulse`}></span>
-            <span>System {stats.integrity.includes('Verified') ? 'Optimal' : 'Ready'} • LexovoxAI Engine v2.0 (On-Device)</span>
+            <span className={`flex h-2 w-2 rounded-full ${stats.integrity.includes('Verified') || stats.integrity.includes('Ready') ? 'bg-emerald-500' : 'bg-primary'} animate-pulse`}></span>
+            <span>
+              System {stats.integrity.includes('Verified') ? 'Optimal' : 'Ready'} •{' '}
+              {vllmStatus?.available
+                ? `DeepSeek-V4-Flash · NVIDIA NIM (${vllmStatus.baseUrl})`
+                : 'LexovoxAI Engine v2.0 · On-Device Fallback'}
+            </span>
           </div>
           <div className="flex gap-6">
             <a href="#" className="hover:text-primary transition-colors">Forensic API</a>
@@ -99,6 +123,37 @@ const App: React.FC = () => {
     </div>
   );
 };
+
+// ── Engine Status Badge ──────────────────────────────────────────────────────
+const EngineStatusBadge: React.FC<{ status: VllmStatus | null }> = React.memo(({ status }) => {
+  if (status === null) {
+    // Still checking
+    return (
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-700/50 border border-slate-600/40 text-slate-400 text-xs font-bold tracking-widest uppercase animate-pulse">
+        <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+        Detecting Engine…
+      </div>
+    );
+  }
+
+  return status.available ? (
+    <div
+      title={`Connected to ${status.baseUrl}`}
+      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold tracking-widest uppercase"
+    >
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      DeepSeek-V4-Flash · NVIDIA NIM
+    </div>
+  ) : (
+    <div
+      title="NVIDIA key not set — using on-device engine"
+      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-400 text-xs font-bold tracking-widest uppercase"
+    >
+      <span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+      LexovoxAI · On-Device
+    </div>
+  );
+});
 
 const StatsBar: React.FC<{ stats: AnalysisStats }> = React.memo(({ stats }) => (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">

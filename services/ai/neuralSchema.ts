@@ -65,6 +65,7 @@ const CATEGORY_AMPLIFIERS: Record<string, number> = {
   'Vishing / Robocall': 1.10,
   'Grandparent Scam': 1.20,
   'Phishing / Credential Theft': 1.25,
+  'Physical Harm / Death Threat': 1.50, // Maximum severity for violent threats
 };
 
 // ─── MATH UTILITIES ──────────────────────────────────────────────────────────
@@ -167,6 +168,10 @@ function applyHardFloors(
     // Multiple categories detected → minimum 70
     if (nlpFeatures.categoryMatches.length >= 2) {
       minScore = Math.max(minScore, 70);
+    }
+    // Physical Harm / Death Threat → minimum 92 (CRITICAL)
+    if (nlpFeatures.categoryMatches.includes('Physical Harm / Death Threat')) {
+      minScore = Math.max(minScore, 92);
     }
   }
 

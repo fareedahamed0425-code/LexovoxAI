@@ -369,7 +369,8 @@ export function synthesizeIndicators(
 
   // Category-based indicators (most important to show first)
   if (categories.length > 0) {
-    indicators.push(`Scam type detected: ${categories.slice(0, 3).join(', ')}`);
+    const label = categories.includes('Physical Harm / Death Threat') ? 'Critical Threat' : 'Scam type';
+    indicators.push(`${label} detected: ${categories.slice(0, 3).join(', ')}`);
   }
 
   // Tier 1 keyword matches — show actual matched terms
@@ -442,6 +443,9 @@ export function synthesizeIndicators(
   }
   if (/\b(investment|trading|forex|crypto)\b.{0,30}\b(guaranteed|risk[\-\s]free|double)\b/gi.test(normalizedText)) {
     indicators.push('Investment fraud — guaranteed returns are always a scam signal');
+  }
+  if (/\b(kill|murder|dead|hurt|physically|weapon)\b/i.test(normalizedText)) {
+    indicators.push('Physical harm threat — violent intent or intimidation detected');
   }
 
   // Tier 2 summary if no specific categories caught

@@ -37,6 +37,7 @@ const SCAM_TO_THREAT_CATEGORY: Record<string, string> = {
   'Deepfake / Synthetic Voice': 'deepfake_impersonation',
   'Sextortion': 'blackmail',
   'Employment Scam': 'employment_fraud',
+  'Physical Harm / Death Threat': 'direct_threat',
 };
 
 // ─── VIOLENCE / EXPLICIT / HARM PATTERNS ──────────────────────────────────────
@@ -426,8 +427,8 @@ export function buildTextAnalysisResult(
 }
 
 function buildLikelyIntent(features: NLPFeatures, threatTypes: ThreatType[], score: number, text: string): string {
-  if (threatTypes.some(t => t.category === 'direct_threat')) {
-    return 'Sender appears to intend physical harm or intimidation against a specific target. Message contains explicit violent language.';
+  if (threatTypes.some(t => t.category === 'direct_threat') || features.categoryMatches.includes('Physical Harm / Death Threat')) {
+    return 'Sender appears to intend physical harm or extreme intimidation. Content contains explicit violent threats or intent to cause injury/death.';
   }
   if (threatTypes.some(t => t.category === 'self_harm_risk')) {
     return 'Sender may be experiencing a mental health crisis and could be at risk of self-harm. Requires urgent compassionate intervention.';

@@ -1,6 +1,7 @@
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { analyzeContent } from '../services/aiService';
+import type { StreamCallback } from '../services/aiService';
 import { AnalysisResult, HistoryEntry, AnalysisStats } from '../types';
 import Results from './Results';
 import Loader from './Loader';
@@ -171,9 +172,15 @@ const Analyzer: React.FC<AnalyzerProps> = ({ onStatsUpdate, onSaveHistory }) => 
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
 
+  // Streaming state for DeepSeek thinking + answer tokens
+  const [streamingThinking, setStreamingThinking] = useState('');
+  const [streamingContent, setStreamingContent] = useState('');
+  const [algorithmPhase, setAlgorithmPhase] = useState(false); // true while local algos run
+  const thinkingRef = useRef<HTMLDivElement>(null);
+
   // Placeholder stats on mount
   React.useEffect(() => {
-    onStatsUpdate({ latency: '0ms', load: 'Idle', integrity: 'LexovoxAI Ready' });
+    onStatsUpdate({ latency: '0ms', load: 'Idle', integrity: 'SentinAI Ready' });
   }, [onStatsUpdate]);
 
 
@@ -192,21 +199,48 @@ const Analyzer: React.FC<AnalyzerProps> = ({ onStatsUpdate, onSaveHistory }) => 
     setIsAnalyzing(true);
     setError(null);
     setResult(null);
-      onStatsUpdate({ latency: 'Engaging LexovoxAI...', load: 'Active (Local)', integrity: 'Scanning...' });
+    setStreamingThinking('');
+    setStreamingContent('');
+    setAlgorithmPhase(true);
+    onStatsUpdate({ latency: 'Running algorithms...', load: 'Phase 1/2 — Local', integrity: 'Scanning...' });
 
-      const startTime = performance.now();
+    const startTime = performance.now();
 
-      try {
-        const content = activeType === 'AUDIO'
-          ? `Forensic Analysis of audio sample: ${fileName}.`
-          : text;
+    // Stream callback — receives reasoning and answer tokens incrementally
+    const onStream: StreamCallback = ({ reasoning, content, done }) => {
+      if (reasoning) {
+        // First reasoning token marks transition from algorithm phase to LLM phase
+        setAlgorithmPhase(false);
+        onStatsUpdate({ latency: 'DeepSeek Thinking...', load: 'Phase 2/2 — NVIDIA NIM', integrity: 'Reasoning...' });
+        setStreamingThinking(prev => prev + reasoning);
+        // Auto-scroll thinking panel
+        setTimeout(() => {
+          if (thinkingRef.current) {
+            thinkingRef.current.scrollTop = thinkingRef.current.scrollHeight;
+          }
+        }, 0);
+      }
+      if (content) {
+        setAlgorithmPhase(false);
+        setStreamingContent(prev => prev + content);
+      }
+    };
 
-        const analysisResult = await analyzeContent(content, activeType, audioBase64 || undefined);
+    try {
+      const content = activeType === 'AUDIO'
+        ? `Forensic Analysis of audio sample: ${fileName}.`
+        : text;
+
+      const analysisResult = await analyzeContent(content, activeType, audioBase64 || undefined, onStream);
 
       const endTime = performance.now();
       const duration = (endTime - startTime).toFixed(0);
 
       setResult(analysisResult);
+      // Clear streaming panels once the structured result is ready
+      setStreamingThinking('');
+      setStreamingContent('');
+      setAlgorithmPhase(false);
 
       const historyEntry: HistoryEntry = {
         ...analysisResult,
@@ -221,17 +255,18 @@ const Analyzer: React.FC<AnalyzerProps> = ({ onStatsUpdate, onSaveHistory }) => 
       onStatsUpdate({
         latency: `${duration}ms`,
         load: `${(Math.random() * 5 + 1).toFixed(1)}%`,
-        integrity: 'LexovoxAI Verified'
+        integrity: 'DeepSeek Verified'
       });
     } catch (err: any) {
       const errorMessage = err?.message || 'Unknown error occurred';
       setError(`Analysis failed: ${errorMessage}`);
       onStatsUpdate({ latency: 'Fail', load: 'Error', integrity: 'Compromised' });
-      console.error("Full analysis error:", err);
+      console.error('Full analysis error:', err);
     } finally {
       setIsAnalyzing(false);
+      setAlgorithmPhase(false);
     }
-  }, [text, audioBase64, fileName, onStatsUpdate, onSaveHistory]); // Dependencies are state values required for the action
+  }, [text, audioBase64, fileName, onStatsUpdate, onSaveHistory]);
 
   const handleFileUpload = useCallback((file: File) => {
     if (!file.type.startsWith('audio/')) {
@@ -344,7 +379,59 @@ const Analyzer: React.FC<AnalyzerProps> = ({ onStatsUpdate, onSaveHistory }) => 
         </div>
       )}
 
-      {isAnalyzing && <Loader />}
+      {/* Phase 1: Algorithm pre-analysis indicator */}
+      {isAnalyzing && algorithmPhase && (
+        <div className="glass-card rounded-xl border border-primary/30 overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-primary/20 bg-primary/5">
+            <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+            <span className="text-xs font-bold text-primary uppercase tracking-widest">Phase 1 — Running 9 Local Algorithms</span>
+          </div>
+          <div className="p-5 grid grid-cols-2 md:grid-cols-3 gap-3">
+            {[
+              'Tier-1 Keyword Scorer',
+              'Tier-2 Contextual Scorer',
+              'Combo Pair Detector',
+              'Regex Pattern Matcher',
+              'Scam Category Classifier',
+              'Urgency Scorer',
+              'Impersonation Scorer',
+              'Manipulation Scorer',
+              'Coercion Detector',
+            ].map((algo, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" style={{ animationDelay: `${i * 0.12}s` }}></span>
+                <span className="text-[11px] font-mono text-slate-400">{algo}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Phase 2: DeepSeek Thinking Panel */}
+      {isAnalyzing && streamingThinking && (
+        <div className="glass-card rounded-xl border border-accent-purple/30 overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-accent-purple/20 bg-accent-purple/5">
+            <span className="w-2 h-2 rounded-full bg-accent-purple animate-pulse"></span>
+            <span className="text-xs font-bold text-accent-purple uppercase tracking-widest">Phase 2 — DeepSeek Reasoning…</span>
+          </div>
+          <div
+            ref={thinkingRef}
+            className="p-5 max-h-48 overflow-y-auto font-mono text-xs text-slate-400 leading-relaxed whitespace-pre-wrap"
+          >
+            {streamingThinking}
+          </div>
+        </div>
+      )}
+
+      {/* Streaming answer preview */}
+      {isAnalyzing && streamingContent && (
+        <div className="glass-card rounded-xl border border-primary/20 p-5">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Generating Final Report…</p>
+          <pre className="font-mono text-xs text-slate-300 whitespace-pre-wrap break-words max-h-36 overflow-y-auto">{streamingContent}</pre>
+        </div>
+      )}
+
+      {isAnalyzing && !algorithmPhase && !streamingThinking && !streamingContent && <Loader />}
       {result && <ResultsView result={result} />}
     </div>
   );

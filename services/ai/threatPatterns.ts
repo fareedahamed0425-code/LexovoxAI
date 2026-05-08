@@ -118,6 +118,13 @@ export const TIER1_THREAT_KEYWORDS: string[] = [
   'do not tell anyone', 'do not tell your family', 'do not contact your bank',
   'do not hang up', 'stay on the line', 'keep this between us',
   'do not call anyone else', 'keep this confidential',
+
+  // === PHYSICAL HARM / DEATH THREATS (High Severity) ===
+  'i will kill you', 'i am going to kill you', 'you are dead',
+  'i will find where you live', 'i know where you live', 'watch your back',
+  'i will hurt you', 'going to murder you', 'you will not survive',
+  'i have a weapon', 'i will track you down', 'no one can save you',
+  'i am coming for you', 'your time is up', 'you are going to die',
 ];
 
 // ─── TIER 2: STRONG THREAT INDICATORS (high confidence in context) ────────────
@@ -345,6 +352,12 @@ export const HIGH_RISK_PATTERNS: RegExp[] = [
   // Sextortion
   /\b(video|footage|images|photos)\b.{0,40}\b(send|share|post|release|expose)\b.{0,30}\b(unless|if\s+you\s+don't|pay)\b/gi,
   /\b(embarrassing|explicit|intimate)\b.{0,40}\b(unless|payment|bitcoin)\b/gi,
+
+  // Physical Harm / Death Threats
+  /\b(i\s+will|i\s+am\s+going\s+to|gonna)\b.{0,30}\b(kill|murder|slaughter|hunt|attack|shoot|stab|execute)\b/gi,
+  /\b(you\s+(are|will\s+be))\b.{0,20}\b(dead|killed|murdered|finished|buried)\b/gi,
+  /\b(watch\s+your\s+back|i\s+see\s+you|i\s+know\s+where\s+you\s+live|know\s+your\s+address)\b/gi,
+  /\b(i\s+have\s+a\s+gun|i\s+have\s+a\s+weapon|i\s+will\s+find\s+you)\b/gi,
 ];
 
 // ─── MEDIUM-RISK PATTERNS (suspicious but not conclusive alone) ───────────────
@@ -424,6 +437,11 @@ export const SCAM_CATEGORIES: Record<string, RegExp[]> = {
   'Employment Scam': [
     /\b(job\s+offer|work\s+from\s+home|remote\s+position)\b.{0,60}\b(advance|pay|fee|deposit|equipment)/gi,
     /\b(deposit\s+check|send\s+back|overpayment)\b/gi,
+  ],
+  'Physical Harm / Death Threat': [
+    /\b(kill|murder|dead|hurt|attack|shoot|stab|weapon|survive|die)\b.{0,60}\b(you|your\s+family|where\s+you|home|live)/gi,
+    /\b(i\s+will|i\s+am\s+going\s+to|gonna)\s+(kill|murder|hurt|find)\b/gi,
+    /\b(watch\s+your\s+back|you\s+are\s+dead|know\s+where\s+you\s+live)\b/gi,
   ],
 };
 
@@ -517,6 +535,12 @@ export const BENIGN_INDICATORS: string[] = [
   // Newsletter
   'newsletter', 'weekly digest', 'monthly update', 'product update',
   'feature announcement', 'company news',
+
+  // False Positive Mitigation (metaphorical violence)
+  'killing it', 'slaying the game', 'you are killing me', 'killing me with laughter',
+  'dead tired', 'drop dead gorgeous', 'dead serious', 'dead of night',
+  'kill time', 'killing time', 'slay queen', 'slaying it',
+  'killing the game', 'murdered on the dance floor', 'killer performance',
 ];
 
 // ─── SOCIAL ENGINEERING PATTERNS (regex, high precision) ──────────────────────
@@ -572,6 +596,17 @@ export const KEYWORD_WEIGHTS: Record<string, number> = {
   'download teamviewer now': 2.8,
   'verify your social security number': 2.8,
   'confirm your ssn': 2.8,
+
+  // Critical Physical Threats → 4.0
+  'i will kill you': 4.0,
+  'i am going to kill you': 4.0,
+  'you are dead': 4.0,
+  'going to murder you': 4.0,
+  'you are going to die': 4.0,
+  'i have a weapon': 3.5,
+  'i will find where you live': 3.5,
+  'i know where you live': 3.5,
+  'watch your back': 3.2,
 
   // Strong threat keywords → 2.0–2.5
   'gift card': 2.0,
